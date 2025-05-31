@@ -1,9 +1,85 @@
-# Documentation
+# BearSSL C++ wrapper
+Europa Software's C++ wrapper for BearSSL provides access to this fantastic library in a simpler way, more suited to modern C++ code.</br> 
+At the moment the abstractions are primitive, and usability can be further improved (meaning that suggestions and PRs are welcome).</br>
+- The wrapper is fully functional, and is used in the [Europa Software Webserver](https://github.com/Europasoft/europasoft-network) to provide HTTPS-TLS capabilities.
+- BearSSL headers are only included in TLSInterface.cpp, meaning that other C++ source files will not be contaminated with C declarations from the underlying library. TLSInterface.h provides the wrapper's public interface.
+- Currently only serverside is supported.
+- Importing keys from a file is not yet supported.
 
+## Usage
+
+### Initialization
+Create an object of the TLSContext class. This class handles the state for one connection. </br>
+In multithreaded and multi-client environments, multiple independent contexts can be created without the need for synchronization.</br> 
+The TLSContext class and related data types reside in the "Encryption" namespace.
+```C++
+using namespace Encryption;
+auto tlscontext = TLSContext(TLSKeyType::RSA, CipherSuiteMode::FULL)
+```
+Its constructor requires an `Encryption::TLSKeyType`, and an `Encryption::CipherSuiteMode`. </br>
+The supported key types are RSA and EC (Elliptic Curve), setting this to EC_MIXED may also be required if your key and the issuing Certificate Authority's key are of different types. </br>
+The *`mode`* argument can be changed to load a more lightweight set of encryption algorithms if desired. </br>
+
+### Data flow
+The wrapper mainly consist of a set of functions which are used to push data into - and pull data out of - the library.</br>
+Below is a list of these public functions
+
+- #### getEncryptedOutgoing()
+Gets encrypted data, to be sent to a client
+```C++
+std::string encryptedToSend;
+if (tlscontext->getEncryptedOutgoing(encryptedToSend))
+{
+    // send data to client
+}
+```
+
+- #### pushEncryptedIncoming() and canPushIncoming()
+Pushes encrypted data received from a client, to be decrypted by BearSSL
+```C++
+// receive data from client
+std::string encryptedReceived;
+const size_t pushed = tlscontext->pushEncryptedIncoming(encryptedReceived.data(), encryptedReceived.size());
+// check how much data was pushed, handle remaining bytes
+```
+
+- #### pushOutgoing() and canPushOutgoing()
+Push outgoing data to be encrypted, instead of sending it directly to the client
+```C++ 
+std::string dataToEncrypt;
+if (tlscontext->canPushOutgoing())
+{
+    const size_t sizeToPush = std::min(tlscontext->getPushMaxSizeOutgoing(), dataToEncrypt.size());
+    const size_t sizePushed = tlscontext->pushOutgoing(dataToEncrypt.data(), sizeToPush);
+    // check how much data was pushed, handle remaining bytes
+}
+```
+
+- #### getDecryptedIncoming()
+Get decrypted data received from a client
+```C++
+std::string incomingDecrypted;
+if (tlscontext->getDecryptedIncoming(incomingDecrypted))
+{
+    // use data from client
+}
+```
+
+- #### isClosed()
+Indicates en error or closure of the session
+```C++
+if (tlscontext->isClosed())
+{
+    // handle connection closure and destroy the context object
+}
+```
+
+# Original documentation
+#### Below is the original documentation for BearSSL, not including the changes made to this fork.</br>The following information might not be fully applicable to this version.
 The most up-to-date documentation is supposed to be available on the
-[BearSSL Web site](https://www.bearssl.org/).
+[BearSSL Website](https://www.bearssl.org/).
 
-# Disclaimer
+## Disclaimer
 
 BearSSL is considered beta-level software. Most planned functionalities
 are implemented; new evolution may still break both source and binary
@@ -31,7 +107,7 @@ The usage license is explicited in the `LICENSE.txt` file. This is the
    the Software": this is how the disclaimer is "made explicit".
    Basically, I have put it in every source file, so just keep it there.
 
-# Installation
+## Installation
 
 Right now, BearSSL is a simple library, along with a few test and debug
 command-line tools. There is no installer yet. The library _can_ be
@@ -109,7 +185,7 @@ Dependencies are simple and systematic:
   - `inner.h` includes `config.h` and `bearssl.h`
   - `bearssl.h` includes the other `bearssl_*.h`
 
-# Versioning
+## Versioning
 
 I follow this simple version numbering scheme:
 
